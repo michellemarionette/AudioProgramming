@@ -22,11 +22,12 @@ int main(int argc, const char * argv[]) {
     
     float* samples = new float[durationInSamples];  // create an empty array to store all of our samples
     
-    float frequency = 60;                          // the frequency of the tone to generate
+    float frequency = 120;                          // the frequency of the tone to generate
     
     float phase = 0.0;                                  // keep track of the phase of our oscillator
     float phaseDelta = frequency  / float(sampleRate);  // phaseDelta - how much increment the phase by for each sample
     bool direction = true;
+    float waveSample = phase;
     
     
     // ************
@@ -34,20 +35,22 @@ int main(int argc, const char * argv[]) {
     for (int i=0; i<durationInSamples; i++)
     {
         // make sure the phase is in the range 0-1
-        if(phase + phaseDelta > 1.0f)
+        if(waveSample + phaseDelta > 1)
             direction = false;
-        else if(phase - phaseDelta < -1.0f)
+        else if(waveSample - phaseDelta < -1)
             direction = true;
         
         if(direction == true)
-            phase += phaseDelta;
+            waveSample += phaseDelta * 4;
         else
-            phase -= phaseDelta;
-            
-        float sample = phase;
+            waveSample -= phaseDelta * 4;
+    
+        phase += phaseDelta;
+        if(phase > 1.0)
+            phase -= 1.0;
         
         // add this sample to our samples array (also halving the volume)
-        samples[i] = 0.5 * sample;
+        samples[i] = 0.5 * waveSample;
         
     }
     // END OF DSP LOOP
