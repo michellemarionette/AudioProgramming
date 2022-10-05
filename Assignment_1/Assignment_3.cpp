@@ -1,7 +1,10 @@
 #include <iostream>
 #include <cmath>
 #include "MattsAudioHeader.h"
+#include <vector>
 
+
+//==================================================
 
 class Oscillator{
     
@@ -87,42 +90,60 @@ private:
 };
 
 
+//==================================================
+
 float sampleRate = 48000;
 float duration = 15;
 float durationInSamples = duration * sampleRate;
 
-float frequency = 10;
-float frequency2 = 10;
-float frequency3 = 13;
+float frequency = 80;
 
 float modulationIndex = 1;
 
 float* samples = new float[durationInSamples];
 
+std::vector<Oscillator> oscillators;
+int numOscillators = 10;
+
+//==================================================
 
 int main()
 {
-    Oscillator osc1(true);
-    Oscillator osc2(false);
-    Oscillator osc3(false);
+    for (int i = 0; i < numOscillators; i++)
+    {
+        if (i == 0)
+        {
+            oscillators.push_back(Oscillator(true));
+        }
+        
+        else
+        {
+            oscillators.push_back(Oscillator(false));
+        }
+    }
     
     for (int i = 0; i < durationInSamples; i++)
     {
-        osc1.prepareToProcess(frequency, sampleRate);
-        osc2.prepareToProcess(frequency2, sampleRate);
-        osc3.prepareToProcess(frequency3, sampleRate);
+        for (int i = 0; i < numOscillators; i++)
+        {
+            oscillators[i].prepareToProcess(frequency * (i + 1), sampleRate);
+        }
         
-        float carrierPhase = osc1.process();
-        float modulator = osc2.process();
-        float modulator2 = osc3.process();
+        Oscillator& carrier = oscillators[0];
+        float combinedModulators = 0;
         
-        samples[i] = std::sin((modulationIndex * (modulator + modulator2)) + (2 * M_PI * carrierPhase)) * 0.5;
+        for (int i = 1; i < numOscillators; i++)
+        {
+            combinedModulators += oscillators[i].process();
+        }
+        
+        float carrierPhase = carrier.process();
+        
+        float combinedPhase = (carrierPhase * 2 * M_PI) + (combinedModulators) * modulationIndex * 10;
+        
+        samples[i] = std::sin(combinedPhase);
         
         modulationIndex += 0.0001;
-        frequency -= 0.01;
-        frequency2 += 0.05;
-        frequency3 -= 0.03;
-        
     }
     
     writeToWav(samples, durationInSamples, "phase.wav");
