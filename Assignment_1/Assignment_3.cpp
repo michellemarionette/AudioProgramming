@@ -2,6 +2,7 @@
 #include <cmath>
 #include "MattsAudioHeader.h"
 #include <vector>
+#include <time.h>
 
 
 //==================================================
@@ -66,6 +67,7 @@ public:
     {
         if (m_IsCarrier)
         {
+            updatePhase();
             return m_Phase;
         }
         
@@ -81,7 +83,6 @@ public:
 
     
 private:
-    
     float m_IsCarrier;
     float m_Frequency;
     float m_SampleRate;
@@ -92,23 +93,67 @@ private:
 
 //==================================================
 
+float generateRandomness()
+{
+    return (rand() % 10000) * (1.0 / 10000) - 0.5;
+}
+
+float getModulationIndexDelta()
+{
+    float _modulationIndexDelta = 0;
+    
+    for (int i = 0; i < 64; i++)
+    {
+        _modulationIndexDelta += generateRandomness();
+    }
+    
+    return _modulationIndexDelta;
+}
+
+float getFrequencyDelta()
+{
+    float _frequencyDelta = 0;
+    
+    for (int i = 0; i < 64; i++)
+    {
+        _frequencyDelta += generateRandomness();
+    }
+    
+    return _frequencyDelta;
+}
+
+
+//==================================================
+
 float sampleRate = 48000;
-float duration = 15;
+float duration = 30;
 float durationInSamples = duration * sampleRate;
 
-float frequency = 80;
+float frequency = 0.001;
 
-float modulationIndex = 1;
+float modulationIndex = 0.1;
+float randomnessScale = 0.2;
+int numOscillators = 8;
+
+bool useSinFunction = true;
+bool modulateFrequency = true;
+bool modulateModulationIndex = true;
+
+float modulationIndexModulationConstant = -0.07;
+float frequencyModulationConstant = -0.002;
+float frequencyOffset = -5;
 
 float* samples = new float[durationInSamples];
 
 std::vector<Oscillator> oscillators;
-int numOscillators = 10;
+
 
 //==================================================
 
 int main()
 {
+    srand(time(NULL));
+    
     for (int i = 0; i < numOscillators; i++)
     {
         if (i == 0)
@@ -126,7 +171,7 @@ int main()
     {
         for (int i = 0; i < numOscillators; i++)
         {
-            oscillators[i].prepareToProcess(frequency * (i + 1), sampleRate);
+            oscillators[i].prepareToProcess(frequency * (i + 1) + frequencyOffset, sampleRate);
         }
         
         Oscillator& carrier = oscillators[0];
@@ -139,14 +184,36 @@ int main()
         
         float carrierPhase = carrier.process();
         
-        float combinedPhase = (carrierPhase * 2 * M_PI) + (combinedModulators) * modulationIndex * 10;
+        
+        float combinedPhase;
+        
+        if (useSinFunction)
+        {
+            combinedPhase = (carrierPhase * 2 * M_PI) + (combinedModulators * std::sin(modulationIndex));
+        }
+        
+        else
+        {
+            combinedPhase = (carrierPhase * 2 * M_PI) + (combinedModulators * modulationIndex);
+        }
         
         samples[i] = std::sin(combinedPhase);
         
-        modulationIndex += 0.0001;
+        if(modulateModulationIndex)
+        {
+            float modulationIndexDeltaAvg = getModulationIndexDelta() * randomnessScale;
+            modulationIndex += modulationIndexDeltaAvg + modulationIndexModulationConstant;
+        }
+        
+        if (modulateFrequency)
+        {
+            float frequencyDeltaAvg = getFrequencyDelta() * randomnessScale;
+            frequency += frequencyDeltaAvg + frequencyModulationConstant;
+        }
     }
     
     writeToWav(samples, durationInSamples, "phase.wav");
     
     return 0;
 }
+
